@@ -145,7 +145,7 @@ export default function Evals() {
             />
             <span className="mobile-field-label">Why this score?</span>
             <input
-              aria-label={`Evidence note for ${item.label || `criterion ${index + 1}`}`}
+              aria-label={`Why this score for ${item.label || `criterion ${index + 1}`}`}
               value={item.note}
               onChange={(e) => change(item.id, { note: e.target.value })}
               placeholder="Why this score?"
