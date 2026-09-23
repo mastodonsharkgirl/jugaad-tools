@@ -1,6 +1,6 @@
 # Jugaad tools
 
-Three working, non-AI utilities: exact bill splitting, Unicode-aware text cleanup, and timezone meeting planning.
+Six working, non-AI utilities: CSV diagnostics, a temporary commitment ledger, manual A/B evaluation, exact bill splitting, Unicode-aware text cleanup, and timezone meeting planning.
 
 Built by Saran Vashisht. A clean source snapshot of newly developed modules; no private repository history is included.
 
@@ -27,6 +27,6 @@ Inputs and progress remain in browser memory and clear on refresh. No server, tr
 
 ## Demo
 
-https://jugaad-best-preview.pages.dev
+https://jugaad.best
 
-These are preview deployments. The standalone source uses a minimal shell around the same interactive modules.
+The canonical deployment is linked above. The standalone source uses a minimal shell around the same interactive modules.

@@ -145,6 +145,94 @@ export function copyGuidance(reason: 'unavailable' | 'blocked') {
     : 'Copy was blocked. Select the result and copy it manually.';
 }
 
+export interface CsvInspection {
+  headers: string[];
+  dataRows: number;
+  missingCells: number;
+  duplicateRows: number;
+  raggedRows: number;
+  formulaLikeCells: number;
+  parseError: string | null;
+}
+
+/** Parses CSV text only; it never evaluates cells, formulas, or links. */
+export function inspectCsv(source: string): CsvInspection {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  let parseError: string | null = null;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '"') {
+      if (quoted && source[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else if (quoted) {
+        const following = source[index + 1];
+        if (following && following !== ',' && following !== '\n' && following !== '\r') {
+          parseError ??= 'A closing quote must be followed by a comma or a new row.';
+        }
+        quoted = false;
+      } else if (cell === '') {
+        quoted = true;
+      } else {
+        parseError ??= 'Quotes can only begin at the start of a CSV cell.';
+        cell += character;
+      }
+    } else if (character === ',' && !quoted) {
+      row.push(cell);
+      cell = '';
+    } else if ((character === '\n' || character === '\r') && !quoted) {
+      if (character === '\r' && source[index + 1] === '\n') index += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+    } else cell += character;
+  }
+  if (quoted) parseError ??= 'A quoted CSV cell is missing its closing quote.';
+  if (cell || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+  const [headers = [], ...data] = rows.filter((entry) => entry.some((value) => value !== ''));
+  const signature = new Set<string>();
+  let duplicateRows = 0;
+  let missingCells = 0;
+  let raggedRows = 0;
+  let formulaLikeCells = 0;
+  for (const entry of data) {
+    if (entry.length !== headers.length) raggedRows += 1;
+    const key = JSON.stringify(entry);
+    if (signature.has(key)) duplicateRows += 1;
+    else signature.add(key);
+    for (const value of entry) {
+      if (!value.trim()) missingCells += 1;
+      if (/^[=+\-@]/.test(value.trim())) formulaLikeCells += 1;
+    }
+    missingCells += Math.max(0, headers.length - entry.length);
+  }
+  return {
+    headers,
+    dataRows: data.length,
+    missingCells,
+    duplicateRows,
+    raggedRows,
+    formulaLikeCells,
+    parseError,
+  };
+}
+
+export function scoreEvaluation(ratings: Array<number | null | undefined>) {
+  const valid = ratings.filter(
+    (rating): rating is number =>
+      typeof rating === 'number' && Number.isFinite(rating) && rating >= 0 && rating <= 5,
+  );
+  if (!valid.length) return null;
+  return valid.reduce((sum, rating) => sum + rating, 0) / valid.length;
+}
+
 export function formatInZone(date: Date, timeZone: string) {
   return new Intl.DateTimeFormat('en-IN', {
     timeZone,
