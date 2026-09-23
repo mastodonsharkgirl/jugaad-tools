@@ -45,7 +45,7 @@ export default function Evals() {
       new Blob(
         [
           csvDownload([
-            ['criterion', 'weight', 'response A', 'response B', 'evidence note'],
+            ['criterion', 'weight', 'draft A', 'draft B', 'why this score'],
             ...criteria.map((item) => [
               item.label,
               String(item.weight),
@@ -69,40 +69,40 @@ export default function Evals() {
       <header>
         <span className="accent-icon blue">⌘</span>
         <div>
-          <p>Manual comparison, no model call</p>
+          <p>Put two drafts side by side</p>
           <h1 id="evals-title">Evals for Non-Coders</h1>
           <small>
-            You assign each score and evidence note. Pasted responses are never assessed by AI,
-            sent, or stored.
+            Give each draft a score from 0 to 5. Increase the weight for anything that matters more.
+            Your drafts stay in this tab and clear when you refresh.
           </small>
         </div>
       </header>
       <div className="response-grid">
         <label>
-          Response A
+          Draft A
           <textarea
             value={left}
             onChange={(e) => setLeft(e.target.value)}
-            placeholder="Optional context for your manual rubric"
+            placeholder="Optional: paste draft A for reference"
           />
         </label>
         <label>
-          Response B
+          Draft B
           <textarea
             value={right}
             onChange={(e) => setRight(e.target.value)}
-            placeholder="Optional context for your manual rubric"
+            placeholder="Optional: paste draft B for reference"
           />
         </label>
       </div>
       <div className="criteria">
-        <h2>Your weighted rubric</h2>
+        <h2>Your checklist</h2>
         <div className="criterion-head" aria-hidden="true">
           <span>Criterion</span>
           <span>Weight</span>
-          <span>Response A</span>
-          <span>Response B</span>
-          <span>Evidence</span>
+          <span>Draft A</span>
+          <span>Draft B</span>
+          <span>Why this score?</span>
           <span />
         </div>
         {criteria.map((item, index) => (
@@ -123,7 +123,7 @@ export default function Evals() {
               value={item.weight}
               onChange={(e) => change(item.id, { weight: Number(e.target.value) })}
             />
-            <span className="mobile-field-label">Response A</span>
+            <span className="mobile-field-label">Draft A</span>
             <input
               aria-label={`Rating A for ${item.label || `criterion ${index + 1}`}`}
               type="number"
@@ -133,7 +133,7 @@ export default function Evals() {
               value={item.a ?? ''}
               onChange={(e) => change(item.id, { a: parse(e.target.value) })}
             />
-            <span className="mobile-field-label">Response B</span>
+            <span className="mobile-field-label">Draft B</span>
             <input
               aria-label={`Rating B for ${item.label || `criterion ${index + 1}`}`}
               type="number"
@@ -143,12 +143,12 @@ export default function Evals() {
               value={item.b ?? ''}
               onChange={(e) => change(item.id, { b: parse(e.target.value) })}
             />
-            <span className="mobile-field-label">Evidence note</span>
+            <span className="mobile-field-label">Why this score?</span>
             <input
               aria-label={`Evidence note for ${item.label || `criterion ${index + 1}`}`}
               value={item.note}
               onChange={(e) => change(item.id, { note: e.target.value })}
-              placeholder="Evidence note"
+              placeholder="Why this score?"
             />
             <span className="row-actions">
               <button
@@ -192,8 +192,8 @@ export default function Evals() {
         <div>
           {result.complete ? (
             <>
-              <strong>Response A: {result.a?.toFixed(2)} / 5</strong>
-              <strong>Response B: {result.b?.toFixed(2)} / 5</strong>
+              <strong>Draft A: {result.a?.toFixed(2)} / 5</strong>
+              <strong>Draft B: {result.b?.toFixed(2)} / 5</strong>
             </>
           ) : (
             <strong>Incomplete ratings</strong>
@@ -202,9 +202,9 @@ export default function Evals() {
         <span>
           {result.complete
             ? result.winner === 'Tie'
-              ? 'Manual judgement: tie.'
-              : `Manual judgement: Response ${result.winner} leads by ${formatEvaluationGap(result.gap)}. Scores are rounded to two decimals.`
-            : 'Complete every score and use a positive weight before a winner, tie, or gap is shown.'}
+              ? 'Your scores are tied.'
+              : `By your scores, draft ${result.winner} is ahead by ${formatEvaluationGap(result.gap)}. Scores are rounded to two decimals.`
+            : 'Add a score for every row and use a weight above zero to see the comparison.'}
         </span>
         <button className="quiet-button" type="button" onClick={exportCsv}>
           <Download aria-hidden="true" /> Export comparison
@@ -219,7 +219,7 @@ export default function Evals() {
             next.current = 3;
           }}
         >
-          <RotateCcw aria-hidden="true" /> Reset evaluation
+          <RotateCcw aria-hidden="true" /> Start over
         </button>
       </div>
     </section>

@@ -114,10 +114,11 @@ export default function PromiseLedger() {
       <header>
         <span className="accent-icon gold">✓</span>
         <div>
-          <p>Commitments, in this tab</p>
+          <p>A short list for the things you said you would do</p>
           <h1 id="ledger-title">Promise Ledger</h1>
           <small>
-            Memory only. Refreshing clears this list; download or copy only when you choose.
+            This list stays in this tab. Refreshing clears it, so copy or download it if you need it
+            later.
           </small>
         </div>
       </header>
@@ -152,7 +153,7 @@ export default function PromiseLedger() {
           <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
         </label>
         <button className="primary-button" type="button" onClick={submit}>
-          {editing !== null ? 'Save edit' : 'Add promise'}
+          {editing !== null ? 'Save change' : 'Add to list'}
         </button>
       </div>
       <div className="filter-row">
@@ -245,7 +246,7 @@ export default function PromiseLedger() {
             </section>
           ) : null,
         )}
-        {!items.length && <p>No promises here yet.</p>}
+        {!items.length && <p>Your list is empty.</p>}
       </div>
     </section>
   );

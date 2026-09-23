@@ -71,11 +71,11 @@ export default function TimeBridge() {
     <section className="tool-panel time-panel" aria-labelledby="time-tool-title">
       <div className="tool-panel-head">
         <div>
-          <p className="tool-kicker">cross the clock</p>
+          <p className="tool-kicker">check a time somewhere else</p>
           <h1 id="time-tool-title">Time Bridge</h1>
           <p>
-            Compare a real IANA time zone in your browser. No calendar is connected and nothing is
-            booked.
+            Pick the meeting time where it starts, then see it in another time zone. This does not
+            book or send anything.
           </p>
         </div>
         <span className="tool-stamp">↔</span>
@@ -91,11 +91,11 @@ export default function TimeBridge() {
             />
           </label>
           <label>
-            Find a time zone
+            Search time zones
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search IANA zones"
+              placeholder="Try London or Kolkata"
             />
           </label>
           <label>
@@ -150,39 +150,36 @@ export default function TimeBridge() {
         <output className="time-result" aria-live="polite">
           {!result ? (
             <div className="empty-state">
-              <strong>Choose a meeting time.</strong>
-              <span>The converted time will appear here.</span>
+              <strong>Start with the meeting time.</strong>
+              <span>The matching time in your second time zone will appear here.</span>
             </div>
           ) : 'error' in result ? (
             <div className="error-state">
-              <strong>That time needs a second look.</strong>
+              <strong>Check that time.</strong>
               <span>{result.error}</span>
             </div>
           ) : (
             bridge && (
               <>
-                <p className="output-label">At your destination</p>
+                <p className="output-label">In the second time zone</p>
                 <strong>{formatInZone(bridge.utc, target)}</strong>
-                <p>Source: {formatInZone(bridge.utc, source)}</p>
+                <p>Where it starts: {formatInZone(bridge.utc, source)}</p>
                 <p>
-                  UTC: {bridge.utc.toISOString().replace('T', ' ').slice(0, 16)} · Date and offsets
-                  are shown in both views.
+                  UTC: {bridge.utc.toISOString().replace('T', ' ').slice(0, 16)}. Dates and UTC
+                  offsets are shown in both views.
                 </p>
                 {bridge.ambiguous && (
                   <p className="dst-note">
-                    This time occurs twice at a daylight-saving change. We show the earlier
-                    occurrence.
+                    This time happens twice when daylight saving changes. The earlier one is shown.
                   </p>
                 )}
                 <button className="quiet-button" type="button" onClick={copy}>
                   <Copy aria-hidden="true" /> Copy meeting details
                 </button>
                 <button className="quiet-button" type="button" disabled={!duration} onClick={ics}>
-                  <Download aria-hidden="true" /> Download .ics
+                  <Download aria-hidden="true" /> Download calendar file
                 </button>
-                <p className="tool-footnote">
-                  Check consequential meeting details before you send anything.
-                </p>
+                <p className="tool-footnote">Check the date and time before you send an invite.</p>
               </>
             )
           )}

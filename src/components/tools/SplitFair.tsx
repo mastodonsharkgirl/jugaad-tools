@@ -42,10 +42,11 @@ export default function SplitFair() {
     <section className="tool-panel split-panel" aria-labelledby="split-tool-title">
       <div className="tool-panel-head">
         <div>
-          <p className="tool-kicker">divide clearly</p>
+          <p className="tool-kicker">split a shared bill</p>
           <h1 id="split-tool-title">Split Fair</h1>
           <p>
-            Name people and adjust their shares. Integer paisa arithmetic keeps the final sum exact.
+            Add people, then give them equal or different shares. The split always adds back to the
+            total.
           </p>
         </div>
         <span className="tool-stamp">₹</span>
@@ -66,7 +67,8 @@ export default function SplitFair() {
             <input inputMode="decimal" value={tip} onChange={(e) => setTip(e.target.value)} />
           </label>
           <fieldset className="people-editor">
-            <legend>People and share weights</legend>
+            <legend>People and their shares</legend>
+            <small>Use 1 for equal shares. A share of 2 pays twice as much as a share of 1.</small>
             {people.map((person, index) => (
               <div key={index}>
                 <input
@@ -107,7 +109,7 @@ export default function SplitFair() {
           {!result ? (
             <div className="empty-state">
               <strong>Start with the bill total.</strong>
-              <span>Your exact local split will appear here.</span>
+              <span>Each person’s share will appear here.</span>
             </div>
           ) : 'error' in result ? (
             <div className="error-state">
@@ -119,7 +121,7 @@ export default function SplitFair() {
               <p className="output-label">Total including tip</p>
               <strong className="money-total">{formatMoney(result.value.totalCents)}</strong>
               <p className="output-detail">
-                Tip: {formatMoney(result.value.tipCents)} · weights can be unequal
+                Tip: {formatMoney(result.value.tipCents)} · shares can be different
               </p>
               <ol className="share-list">
                 {result.value.shares.map((share) => (
@@ -132,7 +134,7 @@ export default function SplitFair() {
                 ))}
               </ol>
               <p className="fairness-note">
-                Reconciled:{' '}
+                Shares add up:{' '}
                 {formatMoney(result.value.shares.reduce((sum, share) => sum + share.cents, 0))} ={' '}
                 {formatMoney(result.value.totalCents)}.
               </p>

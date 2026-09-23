@@ -48,18 +48,15 @@ export default function TextTidy() {
     <section className="tool-panel tidy-panel" aria-labelledby="tidy-tool-title">
       <div className="tool-panel-head">
         <div>
-          <p className="tool-kicker">make room</p>
+          <p className="tool-kicker">clean a pasted list</p>
           <h1 id="tidy-tool-title">Text Tidy</h1>
-          <p>
-            Clean copied text locally. The original stays in the left box while you tune each
-            operation.
-          </p>
+          <p>Tidy copied text without losing the original. Choose exactly which changes to make.</p>
         </div>
         <span className="tool-stamp">Aa</span>
       </div>
       <div className="tidy-controls">
         <fieldset>
-          <legend>Case</legend>
+          <legend>Capitalisation</legend>
           {(['none', 'lower', 'upper', 'title'] as CaseMode[]).map((mode) => (
             <label key={mode} className="chip">
               <input
@@ -68,13 +65,19 @@ export default function TextTidy() {
                 checked={caseMode === mode}
                 onChange={() => setCaseMode(mode)}
               />{' '}
-              {mode === 'none' ? 'Keep' : mode}
+              {mode === 'none'
+                ? 'Keep as written'
+                : mode === 'lower'
+                  ? 'lowercase'
+                  : mode === 'upper'
+                    ? 'UPPERCASE'
+                    : 'Title Case'}
             </label>
           ))}
         </fieldset>
         <label className="check-label">
-          <input type="checkbox" checked={trim} onChange={(e) => setTrim(e.target.checked)} /> Trim
-          and collapse spaces
+          <input type="checkbox" checked={trim} onChange={(e) => setTrim(e.target.checked)} />{' '}
+          Remove extra spaces
         </label>
         <label className="check-label">
           <input
@@ -90,23 +93,23 @@ export default function TextTidy() {
         </label>
         <label className="check-label">
           <input type="checkbox" checked={unicode} onChange={(e) => setUnicode(e.target.checked)} />{' '}
-          Normalise Unicode
+          Use one Unicode form for accented letters
         </label>
       </div>
       <div className="tidy-grid">
         <label className="text-box">
-          Original source
+          Original text
           <textarea
             value={source}
             onChange={(e) => setSource(e.target.value)}
-            placeholder={'One thought per line\n\nExtra spaces disappear here.'}
+            placeholder={'One item per line\n\nExtra spaces are cleaned up here.'}
           />
         </label>
         <div className="text-box result-box">
           <div className="result-head">
-            <span>Clean result</span>
+            <span>Cleaned text</span>
             <span aria-live="polite">
-              {result.lineCount} lines · {result.characterCount} code points
+              {result.lineCount} lines · {result.characterCount} Unicode characters
             </span>
           </div>
           <pre>{result.text || 'Your cleaned text will appear here.'}</pre>
@@ -133,10 +136,11 @@ export default function TextTidy() {
         </div>
       </div>
       <p className="tool-footnote">
-        Source: {result.sourceLineCount} lines · {result.sourceCharacterCount} code points. Changes:{' '}
-        {result.changes.trimmed} spacing, {result.changes.blanks} blank, {result.changes.duplicates}{' '}
-        duplicate, {result.changes.case} case, {result.changes.unicode} Unicode. Duplicate matching
-        uses the text after enabled operations, in source order.
+        Started with {result.sourceLineCount} lines and {result.sourceCharacterCount} Unicode
+        characters. Lines with spacing changes: {result.changes.trimmed}. Blank lines removed:{' '}
+        {result.changes.blanks}. Repeated lines removed: {result.changes.duplicates}. Case changes:{' '}
+        {result.changes.case}. Unicode changes: {result.changes.unicode}. Repeats are checked after
+        the options above, in the order they appeared.
       </p>
     </section>
   );

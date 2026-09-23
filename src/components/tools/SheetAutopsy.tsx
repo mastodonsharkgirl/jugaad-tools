@@ -32,10 +32,11 @@ export default function SheetAutopsy() {
       <header>
         <span className="accent-icon teal">⌁</span>
         <div>
-          <p>Inspect a CSV, locally</p>
+          <p>Check a CSV before you import it</p>
           <h1 id="sheet-title">Sheet Autopsy</h1>
           <small>
-            Plain text only. Nothing is uploaded or changed; formula-like values stay text.
+            Paste text or choose a small file. It stays here, and cells that look like formulas are
+            treated as text.
           </small>
         </div>
       </header>
@@ -47,7 +48,7 @@ export default function SheetAutopsy() {
               value={text}
               onChange={(event) => {
                 if (event.target.value.length > LIMIT) {
-                  setError('Paste a CSV smaller than 600 KB. Nothing beyond the limit was read.');
+                  setError('This is too much text to check at once. Try a smaller section.');
                   return;
                 }
                 setText(event.target.value);
@@ -82,7 +83,7 @@ export default function SheetAutopsy() {
         </div>
         <output className="analysis-output" aria-live="polite">
           {!report ? (
-            <p>Paste a small CSV to get source-location findings and a safe export report.</p>
+            <p>Paste a CSV to see blanks, repeated rows and uneven columns.</p>
           ) : (
             <>
               <div className="metric-row">
@@ -96,7 +97,9 @@ export default function SheetAutopsy() {
                   {report.parseError}
                 </p>
               )}
-              <p>Rows are not modified. Exporting a report safely prefixes formula-like fields.</p>
+              <p>
+                Your CSV is left alone. The downloaded report keeps formula-like values as text.
+              </p>
               <button
                 className="quiet-button"
                 type="button"
@@ -140,7 +143,7 @@ export default function SheetAutopsy() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4}>No structural findings in this small file.</td>
+                        <td colSpan={4}>No blank cells, repeated rows or uneven columns found.</td>
                       </tr>
                     )}
                   </tbody>
