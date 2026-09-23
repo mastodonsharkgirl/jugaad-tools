@@ -442,10 +442,7 @@ body[data-layout='toolkit-wall'] h3 {
     min-height: 570px;
   }
   .toolkit-doodle {
-    top: 14rem;
-    right: -2rem;
-    width: 240px;
-    opacity: 0.55;
+    display: none;
   }
   .toolkit-copy {
     padding-top: 5rem;
