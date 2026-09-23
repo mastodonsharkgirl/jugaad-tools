@@ -398,6 +398,31 @@ export function weightedEvaluation(
     gap: Math.abs(rawA - rawB),
   };
 }
+export function formatEvaluationGap(gap: number | null) {
+  if (gap === null) return '—';
+  if (gap > 0 && gap < 0.01) return '<0.01';
+  return gap.toFixed(2);
+}
+function calendarStamp(date: Date) {
+  return date
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}Z/, 'Z');
+}
+export function generateCalendar({
+  start,
+  durationMinutes,
+  uid,
+  stamp = new Date(),
+}: {
+  start: Date;
+  durationMinutes: number;
+  uid: string;
+  stamp?: Date;
+}) {
+  const end = new Date(start.getTime() + durationMinutes * 60_000);
+  return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Jugaad Best//Time Bridge//EN\r\nBEGIN:VEVENT\r\nUID:${uid}\r\nDTSTAMP:${calendarStamp(stamp)}\r\nDTSTART:${calendarStamp(start)}\r\nDTEND:${calendarStamp(end)}\r\nSUMMARY:Meeting\r\nDESCRIPTION:Created locally with Time Bridge. Check details before sending.\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
+}
 export function scoreEvaluation(ratings: Array<number | null | undefined>) {
   const valid = ratings.filter(
     (rating): rating is number =>

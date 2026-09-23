@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   analyzeCsv,
   copyGuidance,
+  formatEvaluationGap,
+  generateCalendar,
   safeCsvCell,
   splitBill,
   splitWeightedBill,
@@ -13,6 +15,28 @@ import {
 } from './tools';
 
 describe('practical workflow helpers', () => {
+  it('creates a standards-complete local calendar event with CRLF lines', () => {
+    const calendar = generateCalendar({
+      start: new Date('2026-07-15T13:00:00.000Z'),
+      durationMinutes: 30,
+      uid: 'local-test@example.invalid',
+      stamp: new Date('2026-07-01T00:00:00.000Z'),
+    });
+    expect(calendar).toContain('UID:local-test@example.invalid\r\n');
+    expect(calendar).toContain('DTSTAMP:20260701T000000Z\r\n');
+    expect(calendar).toContain('DTSTART:20260715T130000Z\r\n');
+    expect(calendar).toContain('DTEND:20260715T133000Z\r\n');
+    expect(calendar.split('\n').every((line) => line === '' || line.endsWith('\r'))).toBe(true);
+  });
+
+  it('keeps a positive narrow manual gap visible after score rounding', () => {
+    const result = weightedEvaluation([
+      { a: 5, b: 5, weight: 100 },
+      { a: 5, b: 4.9, weight: 1 },
+    ]);
+    expect(result.winner).toBe('A');
+    expect(formatEvaluationGap(result.gap)).toBe('<0.01');
+  });
   it('neutralises spreadsheet formulas only in an exported CSV cell', () => {
     expect(safeCsvCell('=SUM(A1:A2)')).toBe("'=SUM(A1:A2)");
     expect(safeCsvCell('  @cmd')).toBe("'  @cmd");

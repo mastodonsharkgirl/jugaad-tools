@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Download, RotateCcw } from 'lucide-react';
-import { csvDownload, weightedEvaluation } from '@/lib/tools';
+import { csvDownload, formatEvaluationGap, weightedEvaluation } from '@/lib/tools';
 type Criterion = {
   id: number;
   label: string;
@@ -203,7 +203,7 @@ export default function Evals() {
           {result.complete
             ? result.winner === 'Tie'
               ? 'Manual judgement: tie.'
-              : `Manual judgement: Response ${result.winner} leads by ${result.gap?.toFixed(2)}.`
+              : `Manual judgement: Response ${result.winner} leads by ${formatEvaluationGap(result.gap)}. Scores are rounded to two decimals.`
             : 'Complete every score and use a positive weight before a winner, tie, or gap is shown.'}
         </span>
         <button className="quiet-button" type="button" onClick={exportCsv}>

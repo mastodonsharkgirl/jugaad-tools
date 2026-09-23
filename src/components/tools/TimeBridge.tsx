@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Copy, Download, RotateCcw } from 'lucide-react';
-import { copyGuidance, formatInZone, zonedDateTimeToUtc } from '@/lib/tools';
+import { copyGuidance, formatInZone, generateCalendar, zonedDateTimeToUtc } from '@/lib/tools';
 const fallback = [
   'Asia/Kolkata',
   'Asia/Singapore',
@@ -17,12 +17,6 @@ const zones = Array.from(
     ...fallback,
   ]),
 ).sort();
-function stamp(date: Date) {
-  return date
-    .toISOString()
-    .replace(/[-:]/g, '')
-    .replace(/\.\d{3}Z/, 'Z');
-}
 export default function TimeBridge() {
   const [dateTime, setDateTime] = useState('');
   const [source, setSource] = useState('Asia/Kolkata');
@@ -64,8 +58,8 @@ export default function TimeBridge() {
       alert('Enter a positive duration before downloading a calendar file.');
       return;
     }
-    const end = new Date(bridge.utc.getTime() + mins * 60000);
-    const body = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Jugaad Best//Time Bridge//EN\r\nBEGIN:VEVENT\r\nDTSTART:${stamp(bridge.utc)}\r\nDTEND:${stamp(end)}\r\nSUMMARY:Meeting\r\nDESCRIPTION:Created locally with Time Bridge. Check details before sending.\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
+    const uid = `${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`}@jugaad.best`;
+    const body = generateCalendar({ start: bridge.utc, durationMinutes: mins, uid });
     const url = URL.createObjectURL(new Blob([body], { type: 'text/calendar' }));
     const link = document.createElement('a');
     link.href = url;
