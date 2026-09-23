@@ -1,21 +1,23 @@
 import { useMemo, useState } from 'react';
-import { Check, Copy, RotateCcw } from 'lucide-react';
+import { Check, Copy, Download, RotateCcw } from 'lucide-react';
 import { copyGuidance, type CaseMode, tidyText } from '@/lib/tools';
-
 export default function TextTidy() {
   const [source, setSource] = useState('');
   const [caseMode, setCaseMode] = useState<CaseMode>('none');
   const [dedupe, setDedupe] = useState(true);
+  const [trim, setTrim] = useState(true);
+  const [removeBlankLines, setBlank] = useState(true);
+  const [unicode, setUnicode] = useState(true);
   const [copied, setCopied] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
-  const result = useMemo(() => tidyText(source, { caseMode, dedupe }), [source, caseMode, dedupe]);
+  const result = useMemo(
+    () => tidyText(source, { caseMode, dedupe, trim, removeBlankLines, unicode }),
+    [source, caseMode, dedupe, trim, removeBlankLines, unicode],
+  );
   const copy = async () => {
     if (!result.text) return;
-    if (!navigator.clipboard?.writeText) {
-      setCopyMessage(copyGuidance('unavailable'));
-      return;
-    }
     try {
+      if (!navigator.clipboard?.writeText) throw new Error('unavailable');
       await navigator.clipboard.writeText(result.text);
       setCopied(true);
       setCopyMessage('Copied to your clipboard.');
@@ -24,10 +26,21 @@ export default function TextTidy() {
       setCopyMessage(copyGuidance('blocked'));
     }
   };
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([result.text], { type: 'text/plain' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'tidied-text.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
   const reset = () => {
     setSource('');
     setCaseMode('none');
     setDedupe(true);
+    setTrim(true);
+    setBlank(true);
+    setUnicode(true);
     setCopied(false);
     setCopyMessage('');
   };
@@ -35,11 +48,11 @@ export default function TextTidy() {
     <section className="tool-panel tidy-panel" aria-labelledby="tidy-tool-title">
       <div className="tool-panel-head">
         <div>
-          <p className="tool-kicker">02 / make room</p>
+          <p className="tool-kicker">make room</p>
           <h1 id="tidy-tool-title">Text Tidy</h1>
           <p>
-            Clean pasted text without sending it anywhere. Spaces, blank lines, and repeated lines
-            are sorted locally.
+            Clean copied text locally. The original stays in the left box while you tune each
+            operation.
           </p>
         </div>
         <span className="tool-stamp">Aa</span>
@@ -60,13 +73,29 @@ export default function TextTidy() {
           ))}
         </fieldset>
         <label className="check-label">
+          <input type="checkbox" checked={trim} onChange={(e) => setTrim(e.target.checked)} /> Trim
+          and collapse spaces
+        </label>
+        <label className="check-label">
+          <input
+            type="checkbox"
+            checked={removeBlankLines}
+            onChange={(e) => setBlank(e.target.checked)}
+          />{' '}
+          Remove blank lines
+        </label>
+        <label className="check-label">
           <input type="checkbox" checked={dedupe} onChange={(e) => setDedupe(e.target.checked)} />{' '}
           Remove repeated lines
+        </label>
+        <label className="check-label">
+          <input type="checkbox" checked={unicode} onChange={(e) => setUnicode(e.target.checked)} />{' '}
+          Normalise Unicode
         </label>
       </div>
       <div className="tidy-grid">
         <label className="text-box">
-          Paste text
+          Original source
           <textarea
             value={source}
             onChange={(e) => setSource(e.target.value)}
@@ -86,6 +115,14 @@ export default function TextTidy() {
               {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
               {copied ? 'Copied' : 'Copy result'}
             </button>
+            <button
+              className="quiet-button"
+              type="button"
+              onClick={download}
+              disabled={!result.text}
+            >
+              <Download aria-hidden="true" /> Download
+            </button>
             <button className="quiet-button" type="button" onClick={reset}>
               <RotateCcw aria-hidden="true" /> Reset
             </button>
@@ -96,10 +133,10 @@ export default function TextTidy() {
         </div>
       </div>
       <p className="tool-footnote">
-        Unicode text is normalised to a consistent form before duplicates are checked.{' '}
-        {result.removedLines
-          ? `${result.removedLines} blank or repeated line${result.removedLines > 1 ? 's' : ''} removed.`
-          : 'Nothing removed yet.'}
+        Source: {result.sourceLineCount} lines · {result.sourceCharacterCount} code points. Changes:{' '}
+        {result.changes.trimmed} spacing, {result.changes.blanks} blank, {result.changes.duplicates}{' '}
+        duplicate, {result.changes.case} case, {result.changes.unicode} Unicode. Duplicate matching
+        uses the text after enabled operations, in source order.
       </p>
     </section>
   );

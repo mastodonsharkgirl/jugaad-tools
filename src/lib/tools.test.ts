@@ -1,6 +1,136 @@
 import { describe, expect, it } from 'vitest';
 
-import { copyGuidance, splitBill, tidyText, zonedDateTimeToUtc } from './tools';
+import {
+  analyzeCsv,
+  copyGuidance,
+  safeCsvCell,
+  splitBill,
+  splitWeightedBill,
+  tidyText,
+  validateLedgerEntry,
+  weightedEvaluation,
+  zonedDateTimeToUtc,
+} from './tools';
+
+describe('practical workflow helpers', () => {
+  it('neutralises spreadsheet formulas only in an exported CSV cell', () => {
+    expect(safeCsvCell('=SUM(A1:A2)')).toBe("'=SUM(A1:A2)");
+    expect(safeCsvCell('  @cmd')).toBe("'  @cmd");
+    expect(safeCsvCell('ordinary text')).toBe('ordinary text');
+  });
+
+  it('finds header and mixed-value risks without changing CSV source text', () => {
+    const report = analyzeCsv('name,,name\nAda,  ,1\nAda,open,true\nAda,open,2');
+    expect(report.findings.some((finding) => /empty header/i.test(finding.finding))).toBe(true);
+    expect(report.findings.some((finding) => /duplicate header/i.test(finding.finding))).toBe(true);
+    expect(report.findings.some((finding) => /mixed/i.test(finding.finding))).toBe(true);
+  });
+
+  it('locates duplicate rows in the finding table', () => {
+    const report = analyzeCsv('a,b\n1,2\n1,2');
+    expect(
+      report.findings.some(
+        (finding) => finding.row === 3 && /duplicate row/i.test(finding.finding),
+      ),
+    ).toBe(true);
+  });
+
+  it('uses physical source rows after blank CSV records', () => {
+    const report = analyzeCsv('a,b\n\nok,');
+    expect(
+      report.findings.some((finding) => finding.row === 3 && /blank field/i.test(finding.finding)),
+    ).toBe(true);
+  });
+
+  it('requires each ledger field that creates a commitment', () => {
+    expect(validateLedgerEntry({ person: ' ', commitment: '', due: '' })).toEqual({
+      person: 'Enter a person or team.',
+      commitment: 'Enter the commitment.',
+    });
+  });
+
+  it('keeps zero scores and waits for complete weighted ratings', () => {
+    expect(
+      weightedEvaluation([
+        { a: 0, b: 5, weight: 2 },
+        { a: null, b: 4, weight: 1 },
+      ]),
+    ).toEqual({
+      complete: false,
+      a: null,
+      b: null,
+      winner: null,
+      gap: null,
+    });
+    expect(
+      weightedEvaluation([
+        { a: 0, b: 5, weight: 2 },
+        { a: 3, b: 3, weight: 1 },
+      ]),
+    ).toMatchObject({
+      complete: true,
+      a: 1,
+      b: 4.33,
+      winner: 'B',
+    });
+  });
+
+  it('does not turn a small weighted gap into a rounded tie', () => {
+    expect(
+      weightedEvaluation([
+        { a: 5, b: 5, weight: 100 },
+        { a: 5, b: 4.9, weight: 1 },
+      ]).winner,
+    ).toBe('A');
+  });
+
+  it('rejects out-of-range ratings and huge finite weights as incomplete', () => {
+    expect(weightedEvaluation([{ a: 6, b: 4, weight: 1 }]).complete).toBe(false);
+    expect(weightedEvaluation([{ a: 5, b: 4, weight: 1e308 }]).complete).toBe(false);
+  });
+
+  it('reconciles unequal weighted shares exactly in paisa', () => {
+    const result = splitWeightedBill('10.00', '0', [
+      { name: 'Asha', weight: '1' },
+      { name: 'Dev', weight: '2' },
+    ]);
+    expect(result.shares.map((share) => share.cents)).toEqual([333, 667]);
+    expect(result.shares.reduce((sum, share) => sum + share.cents, 0)).toBe(result.totalCents);
+    expect(() =>
+      splitWeightedBill('10', '0', [{ name: 'Asha', weight: '999999999999999999999999' }]),
+    ).toThrow();
+  });
+
+  it('treats empty Text Tidy input as zero source and result characters', () => {
+    expect(
+      tidyText('', {
+        trim: true,
+        removeBlankLines: true,
+        dedupe: true,
+        caseMode: 'none',
+        unicode: true,
+      }),
+    ).toMatchObject({
+      sourceLineCount: 0,
+      sourceCharacterCount: 0,
+      lineCount: 0,
+      characterCount: 0,
+      removedLines: 0,
+    });
+  });
+
+  it('removes whitespace-only blank lines even when spacing cleanup is off', () => {
+    expect(
+      tidyText('keep\n   \nnext', {
+        trim: false,
+        removeBlankLines: true,
+        dedupe: false,
+        caseMode: 'none',
+        unicode: false,
+      }).text,
+    ).toBe('keep\nnext');
+  });
+});
 
 describe('splitBill', () => {
   it('uses integer cents and gives the first people the extra cents', () => {
@@ -34,6 +164,12 @@ describe('tidyText', () => {
     expect(tidyText('hello\nWORLD', { caseMode: 'title', dedupe: false }).text).toBe(
       'Hello\nWorld',
     );
+  });
+
+  it('title-cases combining marks and apostrophes as parts of a word', () => {
+    expect(
+      tidyText("a\u0301bc don't", { caseMode: 'title', dedupe: false, unicode: false }).text,
+    ).toBe("A\u0301bc Don't");
   });
 });
 

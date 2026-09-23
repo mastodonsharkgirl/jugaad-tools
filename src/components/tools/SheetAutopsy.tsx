@@ -1,12 +1,19 @@
 import { useMemo, useState } from 'react';
-import { RotateCcw, Upload } from 'lucide-react';
-import { inspectCsv } from '@/lib/tools';
-
+import { Download, RotateCcw, Upload } from 'lucide-react';
+import { analyzeCsv, csvDownload } from '@/lib/tools';
 const LIMIT = 600_000;
+function download(name: string, body: string, type = 'text/csv') {
+  const url = URL.createObjectURL(new Blob([body], { type }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 export default function SheetAutopsy() {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
-  const report = useMemo(() => (text ? inspectCsv(text) : null), [text]);
+  const report = useMemo(() => (text ? analyzeCsv(text) : null), [text]);
   const loadFile = (file?: File) => {
     if (!file) return;
     if (file.size > LIMIT) {
@@ -28,7 +35,7 @@ export default function SheetAutopsy() {
           <p>Inspect a CSV, locally</p>
           <h1 id="sheet-title">Sheet Autopsy</h1>
           <small>
-            Reads plain text only. Files are never uploaded to a server or run as formulas.
+            Plain text only. Nothing is uploaded or changed; formula-like values stay text.
           </small>
         </div>
       </header>
@@ -75,27 +82,70 @@ export default function SheetAutopsy() {
         </div>
         <output className="analysis-output" aria-live="polite">
           {!report ? (
-            <p>Paste a small CSV to see its structure and quality checks.</p>
+            <p>Paste a small CSV to get source-location findings and a safe export report.</p>
           ) : (
             <>
               <div className="metric-row">
                 <b>{report.dataRows}</b>
                 <span>data rows</span>
-                <b>{report.headers.length}</b>
-                <span>columns</span>
+                <b>{report.findings.length}</b>
+                <span>findings</span>
               </div>
-              <ul>
-                <li>{report.missingCells} missing cells</li>
-                <li>{report.duplicateRows} repeated rows</li>
-                <li>{report.raggedRows} uneven rows</li>
-                <li>{report.formulaLikeCells} formula-like values left as text</li>
-              </ul>
-              {report.parseError && <p className="error-state">{report.parseError}</p>}
-              <p>
-                {report.raggedRows
-                  ? 'Fix uneven rows before importing.'
-                  : 'Row widths match the header.'}
-              </p>
+              {report.parseError && (
+                <p className="error-state" role="alert">
+                  {report.parseError}
+                </p>
+              )}
+              <p>Rows are not modified. Exporting a report safely prefixes formula-like fields.</p>
+              <button
+                className="quiet-button"
+                type="button"
+                onClick={() =>
+                  download(
+                    'sheet-autopsy-report.csv',
+                    csvDownload([
+                      ['source row', 'source column', 'source', 'finding', 'safe preview'],
+                      ...report.findings.map((f) => [
+                        String(f.row || ''),
+                        String(f.column || ''),
+                        f.source,
+                        f.finding,
+                        f.preview,
+                      ]),
+                    ]),
+                  )
+                }
+              >
+                <Download aria-hidden="true" /> Download report
+              </button>
+              <div className="finding-table" role="region" aria-label="CSV findings" tabIndex={0}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Row</th>
+                      <th>Column</th>
+                      <th>Finding</th>
+                      <th>Safe preview</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.findings.length ? (
+                      report.findings.map((finding, index) => (
+                        <tr key={`${finding.row}-${finding.column}-${index}`}>
+                          <td>{finding.row || '—'}</td>
+                          <td>{finding.column || '—'}</td>
+                          <td>{finding.finding}</td>
+                          <td>{finding.preview}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4}>No structural findings in this small file.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </output>

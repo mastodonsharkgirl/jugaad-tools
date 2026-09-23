@@ -1,37 +1,69 @@
 import { useMemo, useRef, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
-import { scoreEvaluation } from '@/lib/tools';
-
-const defaults = ['Useful', 'Accurate', 'Clear'];
-type RatingPair = { a: number | null; b: number | null };
-type Criterion = { id: number; label: string };
-const defaultCriteria = (): Criterion[] => defaults.map((label, id) => ({ id, label }));
-const emptyRatings = (): RatingPair[] => defaults.map(() => ({ a: null, b: null }));
-
-function enteredRating(value: string) {
-  if (value === '') return null;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 5 ? numeric : null;
-}
-
+import { Download, RotateCcw } from 'lucide-react';
+import { csvDownload, weightedEvaluation } from '@/lib/tools';
+type Criterion = {
+  id: number;
+  label: string;
+  weight: number;
+  a: number | null;
+  b: number | null;
+  note: string;
+};
+const base = (): Criterion[] =>
+  ['Useful', 'Accurate', 'Clear'].map((label, id) => ({
+    id,
+    label,
+    weight: 1,
+    a: null,
+    b: null,
+    note: '',
+  }));
+const parse = (value: string) =>
+  value === ''
+    ? null
+    : Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 5
+      ? Number(value)
+      : null;
 export default function Evals() {
   const [left, setLeft] = useState('');
   const [right, setRight] = useState('');
-  const [criteria, setCriteria] = useState<Criterion[]>(defaultCriteria);
-  const [ratings, setRatings] = useState<RatingPair[]>(emptyRatings);
-  const [notes, setNotes] = useState('');
-  const nextCriterionId = useRef(defaults.length);
-  const scoreA = useMemo(() => scoreEvaluation(ratings.map((rating) => rating.a)), [ratings]);
-  const scoreB = useMemo(() => scoreEvaluation(ratings.map((rating) => rating.b)), [ratings]);
-
-  const updateRating = (index: number, side: keyof RatingPair, value: string) => {
-    setRatings((all) =>
-      all.map((rating, position) =>
-        position === index ? { ...rating, [side]: enteredRating(value) } : rating,
+  const [criteria, setCriteria] = useState(base);
+  const next = useRef(3);
+  const result = useMemo(() => weightedEvaluation(criteria), [criteria]);
+  const change = (id: number, patch: Partial<Criterion>) =>
+    setCriteria((all) => all.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  const reorder = (index: number, direction: number) =>
+    setCriteria((all) => {
+      const copy = [...all];
+      const target = index + direction;
+      if (target < 0 || target >= copy.length) return copy;
+      [copy[index], copy[target]] = [copy[target], copy[index]];
+      return copy;
+    });
+  const exportCsv = () => {
+    const url = URL.createObjectURL(
+      new Blob(
+        [
+          csvDownload([
+            ['criterion', 'weight', 'response A', 'response B', 'evidence note'],
+            ...criteria.map((item) => [
+              item.label,
+              String(item.weight),
+              String(item.a ?? ''),
+              String(item.b ?? ''),
+              item.note,
+            ]),
+          ]),
+        ],
+        { type: 'text/csv' },
       ),
     );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'manual-evaluation.csv';
+    link.click();
+    URL.revokeObjectURL(url);
   };
-
   return (
     <section className="studio-panel" aria-labelledby="evals-title">
       <header>
@@ -40,7 +72,8 @@ export default function Evals() {
           <p>Manual comparison, no model call</p>
           <h1 id="evals-title">Evals for Non-Coders</h1>
           <small>
-            You define the criteria and scores. This page does not judge, send, or store responses.
+            You assign each score and evidence note. Pasted responses are never assessed by AI,
+            sent, or stored.
           </small>
         </div>
       </header>
@@ -50,7 +83,7 @@ export default function Evals() {
           <textarea
             value={left}
             onChange={(e) => setLeft(e.target.value)}
-            placeholder="Paste a response to compare"
+            placeholder="Optional context for your manual rubric"
           />
         </label>
         <label>
@@ -58,97 +91,132 @@ export default function Evals() {
           <textarea
             value={right}
             onChange={(e) => setRight(e.target.value)}
-            placeholder="Paste another response"
+            placeholder="Optional context for your manual rubric"
           />
         </label>
       </div>
       <div className="criteria">
-        <h2>Your rubric</h2>
-        <div className="rating-labels" aria-hidden="true">
-          <span />
+        <h2>Your weighted rubric</h2>
+        <div className="criterion-head" aria-hidden="true">
+          <span>Criterion</span>
+          <span>Weight</span>
           <span>Response A</span>
           <span>Response B</span>
+          <span>Evidence</span>
+          <span />
         </div>
-        {criteria.map((criterion, index) => (
-          <div className="criterion-row" key={criterion.id}>
+        {criteria.map((item, index) => (
+          <div className="criterion-row extended" key={item.id}>
+            <span className="mobile-field-label">Criterion</span>
             <input
               aria-label={`Criterion ${index + 1}`}
-              value={criterion.label}
-              onChange={(e) =>
-                setCriteria((all) =>
-                  all.map((item, position) =>
-                    position === index ? { ...item, label: e.target.value } : item,
-                  ),
-                )
-              }
+              value={item.label}
+              onChange={(e) => change(item.id, { label: e.target.value })}
             />
-            <label>
-              <span className="sr-only">
-                Rating A for {criterion.label || `criterion ${index + 1}`}
-              </span>
-              <input
-                aria-label={`Rating A for ${criterion.label || `criterion ${index + 1}`}`}
-                type="number"
-                min="0"
-                max="5"
-                step="0.1"
-                value={ratings[index].a ?? ''}
-                onChange={(e) => updateRating(index, 'a', e.target.value)}
-              />
-            </label>
-            <label>
-              <span className="sr-only">
-                Rating B for {criterion.label || `criterion ${index + 1}`}
-              </span>
-              <input
-                aria-label={`Rating B for ${criterion.label || `criterion ${index + 1}`}`}
-                type="number"
-                min="0"
-                max="5"
-                step="0.1"
-                value={ratings[index].b ?? ''}
-                onChange={(e) => updateRating(index, 'b', e.target.value)}
-              />
-            </label>
+            <span className="mobile-field-label">Weight</span>
+            <input
+              aria-label={`Weight for ${item.label || `criterion ${index + 1}`}`}
+              type="number"
+              min="0.01"
+              max="1000"
+              step="0.1"
+              value={item.weight}
+              onChange={(e) => change(item.id, { weight: Number(e.target.value) })}
+            />
+            <span className="mobile-field-label">Response A</span>
+            <input
+              aria-label={`Rating A for ${item.label || `criterion ${index + 1}`}`}
+              type="number"
+              min="0"
+              max="5"
+              step="0.1"
+              value={item.a ?? ''}
+              onChange={(e) => change(item.id, { a: parse(e.target.value) })}
+            />
+            <span className="mobile-field-label">Response B</span>
+            <input
+              aria-label={`Rating B for ${item.label || `criterion ${index + 1}`}`}
+              type="number"
+              min="0"
+              max="5"
+              step="0.1"
+              value={item.b ?? ''}
+              onChange={(e) => change(item.id, { b: parse(e.target.value) })}
+            />
+            <span className="mobile-field-label">Evidence note</span>
+            <input
+              aria-label={`Evidence note for ${item.label || `criterion ${index + 1}`}`}
+              value={item.note}
+              onChange={(e) => change(item.id, { note: e.target.value })}
+              placeholder="Evidence note"
+            />
+            <span className="row-actions">
+              <button
+                type="button"
+                aria-label={`Move ${item.label} up`}
+                onClick={() => reorder(index, -1)}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                aria-label={`Move ${item.label} down`}
+                onClick={() => reorder(index, 1)}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                aria-label={`Remove ${item.label}`}
+                onClick={() => setCriteria((all) => all.filter((entry) => entry.id !== item.id))}
+              >
+                ×
+              </button>
+            </span>
           </div>
         ))}
         <button
           type="button"
           className="quiet-button"
-          onClick={() => {
+          onClick={() =>
             setCriteria((all) => [
               ...all,
-              { id: nextCriterionId.current++, label: 'New criterion' },
-            ]);
-            setRatings((all) => [...all, { a: null, b: null }]);
-          }}
+              { id: next.current++, label: 'New criterion', weight: 1, a: null, b: null, note: '' },
+            ])
+          }
         >
           Add criterion
         </button>
       </div>
-      <label className="evidence-note">
-        Evidence notes
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Why did either response earn its rating?"
-        />
-      </label>
       <div className="eval-summary">
         <div>
-          <strong>Response A: {scoreA === null ? '—' : `${scoreA.toFixed(1)} / 5`}</strong>
-          <strong>Response B: {scoreB === null ? '—' : `${scoreB.toFixed(1)} / 5`}</strong>
+          {result.complete ? (
+            <>
+              <strong>Response A: {result.a?.toFixed(2)} / 5</strong>
+              <strong>Response B: {result.b?.toFixed(2)} / 5</strong>
+            </>
+          ) : (
+            <strong>Incomplete ratings</strong>
+          )}
         </div>
-        <span>Average of each response’s entered ratings</span>
+        <span>
+          {result.complete
+            ? result.winner === 'Tie'
+              ? 'Manual judgement: tie.'
+              : `Manual judgement: Response ${result.winner} leads by ${result.gap?.toFixed(2)}.`
+            : 'Complete every score and use a positive weight before a winner, tie, or gap is shown.'}
+        </span>
+        <button className="quiet-button" type="button" onClick={exportCsv}>
+          <Download aria-hidden="true" /> Export comparison
+        </button>
         <button
           className="quiet-button"
           type="button"
           onClick={() => {
             setLeft('');
             setRight('');
-            setCriteria(defaultCriteria());
-            setRatings(emptyRatings());
-            setNotes('');
+            setCriteria(base());
+            next.current = 3;
           }}
         >
           <RotateCcw aria-hidden="true" /> Reset evaluation
